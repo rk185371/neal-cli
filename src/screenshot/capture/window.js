@@ -16,6 +16,7 @@ async function captureWindow(app, win, outputPath) {
 
     validateScreenshot(dest);
     console.log(`Saved: ${dest}  (window "${win.title}", ${win.width}x${win.height})`);
+    return dest;
 }
 
 module.exports = { captureWindow };

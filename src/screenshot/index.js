@@ -3,6 +3,12 @@ const { listWindows, getRunningApps } = require('./windows/discovery');
 const { filterByTitle } = require('./windows/filter');
 const { captureWindow } = require('./capture/window');
 const { captureFullScreen } = require('./capture/fullscreen');
+const { extractText } = require('../tesseract');
+
+async function ocrFile(filePath) {
+    const text = await extractText(filePath);
+    console.log(text);
+}
 
 async function screenshot(app, options) {
     const interactive = options.interactive !== false;
@@ -20,7 +26,8 @@ async function screenshot(app, options) {
             const choices = ['⌕ Full Screen', ...apps];
             const chosen = await promptChoice('Screenshot target', choices, (name) => name);
             if (chosen === '⌕ Full Screen') {
-                await captureFullScreen(options.output);
+                const dest = await captureFullScreen(options.output);
+                if (options.ocr) await ocrFile(dest);
                 return;
             }
             app = chosen;
@@ -65,18 +72,19 @@ async function screenshot(app, options) {
     }
 
     if (interactive) {
-        // Interactive: pick one window (skip prompt if only one)
         const win = windows.length === 1
             ? windows[0]
             : await promptChoice('Multiple windows found', windows, (w) => `${w.width}x${w.height}  "${w.title}"`);
-        await captureWindow(app, win, options.output);
+        const dest = await captureWindow(app, win, options.output);
+        if (options.ocr) await ocrFile(dest);
     } else {
-        // Non-interactive: capture all matching windows
         if (windows.length === 1 && options.output) {
-            await captureWindow(app, windows[0], options.output);
+            const dest = await captureWindow(app, windows[0], options.output);
+            if (options.ocr) await ocrFile(dest);
         } else {
             for (const win of windows) {
-                await captureWindow(app, win, null);
+                const dest = await captureWindow(app, win, null);
+                if (options.ocr) await ocrFile(dest);
             }
         }
     }

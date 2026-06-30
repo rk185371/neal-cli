@@ -16,6 +16,7 @@ async function captureFullScreen(outputPath) {
 
     validateScreenshot(dest);
     console.log(`Saved: ${dest}  (full screen)`);
+    return dest;
 }
 
 module.exports = { captureFullScreen };
