@@ -2,11 +2,11 @@ const { createInterface } = require('readline');
 
 function promptChoice(label, items, formatItem) {
     return new Promise((resolve) => {
-        console.log(`${label}:`);
+        process.stderr.write(`${label}:\n`);
         items.forEach((item, i) => {
-            console.log(`  [${i + 1}] ${formatItem(item)}`);
+            process.stderr.write(`  [${i + 1}] ${formatItem(item)}\n`);
         });
-        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        const rl = createInterface({ input: process.stdin, output: process.stderr });
         rl.question(`Choose (1-${items.length}): `, (answer) => {
             rl.close();
             const idx = parseInt(answer, 10) - 1;
@@ -20,10 +20,9 @@ function promptChoice(label, items, formatItem) {
 }
 
 function printApps(apps) {
-    console.log('Running applications:');
-    apps.forEach((name, i) => {
-        console.log(`  [${i + 1}] ${name}`);
-    });
+    for (const name of apps) {
+        console.log(name);
+    }
 }
 
 module.exports = { promptChoice, printApps };

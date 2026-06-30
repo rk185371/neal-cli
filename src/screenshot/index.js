@@ -4,18 +4,24 @@ const { filterByTitle } = require('./windows/filter');
 const { captureWindow } = require('./capture/window');
 const { captureFullScreen } = require('./capture/fullscreen');
 const { extractText } = require('../tesseract');
+const { jsonOk, info } = require('../output');
 
 async function ocrFile(filePath) {
     const text = await extractText(filePath);
-    console.log(text);
+    return text;
 }
 
 async function screenshot(app, options) {
-    const interactive = options.interactive !== false;
+    // Auto-detect: disable interactive when stdin is not a TTY
+    const interactive = options.interactive !== false && process.stdin.isTTY;
 
     if (options.apps) {
         const apps = await getRunningApps();
-        printApps(apps);
+        if (options.json) {
+            console.log(jsonOk({ apps }));
+        } else {
+            printApps(apps);
+        }
         return;
     }
 
@@ -27,13 +33,20 @@ async function screenshot(app, options) {
             const chosen = await promptChoice('Screenshot target', choices, (name) => name);
             if (chosen === '⌕ Full Screen') {
                 const dest = await captureFullScreen(options.output);
-                if (options.ocr) await ocrFile(dest);
+                const result = { screenshots: [{ path: dest, type: 'fullscreen' }] };
+                if (options.ocr) {
+                    result.screenshots[0].ocr = await ocrFile(dest);
+                    if (!options.json) console.log(result.screenshots[0].ocr);
+                } else if (!options.json) {
+                    console.log(dest);
+                }
+                if (options.json) console.log(jsonOk(result));
                 return;
             }
             app = chosen;
         } else {
             console.error('Missing required argument: <app>. Use --apps to list available application names.');
-            process.exit(1);
+            process.exit(2);
         }
     }
 
@@ -56,37 +69,69 @@ async function screenshot(app, options) {
             }
             if (windows.length === 0) {
                 console.error(`No capturable windows for "${app}".`);
-                process.exit(1);
+                process.exit(3);
             }
         } else {
-            process.exit(1);
+            process.exit(3);
         }
     }
 
     if (options.list) {
-        console.log(`Windows for "${app}":`);
-        for (const w of windows) {
-            console.log(`  id=${w.id}  ${w.width}x${w.height}  "${w.title}"`);
+        if (options.json) {
+            console.log(jsonOk({ app, windows: windows.map(w => ({ id: w.id, title: w.title, width: w.width, height: w.height })) }));
+        } else {
+            info(`Windows for "${app}":`);
+            for (const w of windows) {
+                console.log(`  id=${w.id}  ${w.width}x${w.height}  "${w.title}"`);
+            }
         }
         return;
     }
+
+    const screenshots = [];
 
     if (interactive) {
         const win = windows.length === 1
             ? windows[0]
             : await promptChoice('Multiple windows found', windows, (w) => `${w.width}x${w.height}  "${w.title}"`);
         const dest = await captureWindow(app, win, options.output);
-        if (options.ocr) await ocrFile(dest);
+        const entry = { path: dest, window: { id: win.id, title: win.title, width: win.width, height: win.height } };
+        if (options.ocr) {
+            entry.ocr = await ocrFile(dest);
+            if (!options.json) console.log(entry.ocr);
+        } else if (!options.json) {
+            console.log(dest);
+        }
+        screenshots.push(entry);
     } else {
         if (windows.length === 1 && options.output) {
-            const dest = await captureWindow(app, windows[0], options.output);
-            if (options.ocr) await ocrFile(dest);
+            const win = windows[0];
+            const dest = await captureWindow(app, win, options.output);
+            const entry = { path: dest, window: { id: win.id, title: win.title, width: win.width, height: win.height } };
+            if (options.ocr) {
+                entry.ocr = await ocrFile(dest);
+                if (!options.json) console.log(entry.ocr);
+            } else if (!options.json) {
+                console.log(dest);
+            }
+            screenshots.push(entry);
         } else {
             for (const win of windows) {
                 const dest = await captureWindow(app, win, null);
-                if (options.ocr) await ocrFile(dest);
+                const entry = { path: dest, window: { id: win.id, title: win.title, width: win.width, height: win.height } };
+                if (options.ocr) {
+                    entry.ocr = await ocrFile(dest);
+                    if (!options.json) console.log(entry.ocr);
+                } else if (!options.json) {
+                    console.log(dest);
+                }
+                screenshots.push(entry);
             }
         }
+    }
+
+    if (options.json) {
+        console.log(jsonOk({ screenshots }));
     }
 }
 

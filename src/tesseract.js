@@ -1,6 +1,7 @@
 const { createWorker } = require('tesseract.js');
 const fs = require('fs');
 const path = require('path');
+const { info } = require('./output');
 
 const extractText = async (filePath) => {
     const resolved = path.isAbsolute(filePath) ? filePath : path.resolve('.', filePath);
@@ -11,12 +12,12 @@ const extractText = async (filePath) => {
 };
 
 const extractTextFromImage = async (filePath) => {
-    console.log(`[neal] Running OCR`);
-    console.log(`[neal] File: ${path.resolve(filePath)}\n`)
+    info(`[neal] Running OCR`);
+    info(`[neal] File: ${path.resolve(filePath)}`);
     const text = await extractText(filePath);
     console.log(`--- OCR RESULT ---\n\n${text}\n\n--- OCR END ---`);
-    console.log(`[neal] Cleaning up eng.traineddata...`)
-    fs.unlinkSync(path.resolve('eng.traineddata'))
+    info(`[neal] Cleaning up eng.traineddata...`);
+    fs.unlinkSync(path.resolve('eng.traineddata'));
 };
 
 module.exports = { extractTextFromImage, extractText };

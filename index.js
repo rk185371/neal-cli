@@ -3,6 +3,7 @@ const { program } = require('commander');
 const {extractTextFromImage} = require("./src/tesseract");
 const {screenshot} = require("./src/screenshot/index");
 const {verify} = require("./src/verify/index");
+const { jsonError } = require('./src/output');
 
 program
     .name('neal')
@@ -26,9 +27,14 @@ program
     .option('-o, --output <path>', 'output PNG path (default: ./<app>-<timestamp>.png)')
     .option('-l, --list', 'list matching windows and exit without capturing')
     .option('--ocr', 'run OCR on the captured screenshot and print extracted text')
+    .option('--json', 'output results as structured JSON')
     .action((app, options) => {
         screenshot(app, options).catch(err => {
-            console.error(err.message);
+            if (options.json) {
+                console.log(jsonError('SCREENSHOT_FAILED', err.message, null));
+            } else {
+                console.error(err.message);
+            }
             process.exit(1);
         });
     })
@@ -39,13 +45,22 @@ program
     .option('-t, --title <substr>', 'only match windows whose title contains this substring')
     .option('-o, --output <path>', 'output PNG path')
     .option('-e, --expect <text...>', 'text to look for in OCR output (repeatable, all must match)')
+    .option('--json', 'output results as structured JSON')
     .action((app, options) => {
         if (!options.expect || options.expect.length === 0) {
+            if (options.json) {
+                console.log(jsonError('USAGE', '--expect is required', 'neal verify "AppName" --expect "some text"'));
+                process.exit(2);
+            }
             console.error('--expect is required. Usage: neal verify "AppName" --expect "some text"');
-            process.exit(1);
+            process.exit(2);
         }
         verify(app, options).catch(err => {
-            console.error(err.message);
+            if (options.json) {
+                console.log(jsonError('VERIFY_FAILED', err.message, null));
+            } else {
+                console.error(err.message);
+            }
             process.exit(1);
         });
     })

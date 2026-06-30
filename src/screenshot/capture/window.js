@@ -2,6 +2,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { defaultOutputPath } = require('../paths');
 const { validateScreenshot } = require('./validate');
+const { info } = require('../../output');
 
 const execFileAsync = promisify(execFile);
 
@@ -15,7 +16,7 @@ async function captureWindow(app, win, outputPath) {
     }
 
     validateScreenshot(dest);
-    console.log(`Saved: ${dest}  (window "${win.title}", ${win.width}x${win.height})`);
+    info(`Captured: "${win.title}" (${win.width}x${win.height})`);
     return dest;
 }
 

@@ -1,8 +1,9 @@
-const { listWindows, getRunningApps } = require('../screenshot/windows/discovery');
+const { listWindows } = require('../screenshot/windows/discovery');
 const { filterByTitle } = require('../screenshot/windows/filter');
 const { captureWindow } = require('../screenshot/capture/window');
 const { captureFullScreen } = require('../screenshot/capture/fullscreen');
 const { extractText } = require('../tesseract');
+const { jsonOk, jsonError } = require('../output');
 
 async function verify(app, options) {
     let dest;
@@ -19,8 +20,13 @@ async function verify(app, options) {
 
         if (windows.length === 0) {
             const extra = options.title ? ` with title containing "${options.title}"` : '';
-            console.error(`No windows found for "${app}"${extra}.`);
-            process.exit(1);
+            const msg = `No windows found for "${app}"${extra}.`;
+            if (options.json) {
+                console.log(jsonError('NOT_FOUND', msg, `neal screenshot --apps`));
+                process.exit(3);
+            }
+            console.error(msg);
+            process.exit(3);
         }
 
         // Pick largest window in non-interactive mode
@@ -41,15 +47,17 @@ async function verify(app, options) {
 
     const allPassed = results.every(r => r.found);
 
-    for (const r of results) {
-        const icon = r.found ? '✓' : '✗';
-        console.log(`  ${icon} "${r.term}"`);
+    if (options.json) {
+        console.log(jsonOk({ screenshot: dest, results, passed: allPassed }));
+    } else {
+        for (const r of results) {
+            const icon = r.found ? '✓' : '✗';
+            console.log(`  ${icon} "${r.term}"`);
+        }
+        console.log(allPassed ? 'PASS' : 'FAIL');
     }
 
-    if (allPassed) {
-        console.log('PASS');
-    } else {
-        console.log('FAIL');
+    if (!allPassed) {
         process.exit(1);
     }
 }

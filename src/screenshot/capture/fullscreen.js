@@ -2,6 +2,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { fullScreenOutputPath } = require('../paths');
 const { validateScreenshot } = require('./validate');
+const { info } = require('../../output');
 
 const execFileAsync = promisify(execFile);
 
@@ -15,7 +16,7 @@ async function captureFullScreen(outputPath) {
     }
 
     validateScreenshot(dest);
-    console.log(`Saved: ${dest}  (full screen)`);
+    info(`Captured: full screen`);
     return dest;
 }
 
