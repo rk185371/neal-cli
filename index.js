@@ -41,12 +41,14 @@ program
 
 program
     .command('verify [app]')
-    .description('Screenshot + OCR + assert expected text.\n\nExamples:\n  neal verify "Google Chrome" --expect "Dashboard"\n  neal verify Safari --title "GitHub" --expect "Pull requests"\n  neal verify --expect "Desktop"')
+    .description('Screenshot + OCR + assert expected text.\n\nExamples:\n  neal verify "Google Chrome" --expect "Dashboard"\n  neal verify --app Safari --title "GitHub" --expect "Pull requests"\n  neal verify --app qemu-system-aarch64 --title "Android Emulator" --expect "Password"\n  neal verify --title "Android Emulator" --expect "Login"\n  neal verify --expect "Desktop"')
+    .option('-a, --app <name>', 'application process name (alternative to positional argument)')
     .option('-t, --title <substr>', 'only match windows whose title contains this substring')
     .option('-o, --output <path>', 'output PNG path')
     .option('-e, --expect <text...>', 'text to look for in OCR output (repeatable, all must match)')
     .option('--json', 'output results as structured JSON')
     .action((app, options) => {
+        app = app || options.app;
         if (!options.expect || options.expect.length === 0) {
             if (options.json) {
                 console.log(jsonError('USAGE', '--expect is required', 'neal verify "AppName" --expect "some text"'));
