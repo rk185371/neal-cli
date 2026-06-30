@@ -88,9 +88,60 @@ function printApps(apps) {
     });
 }
 
+function defaultOutputPath(app, win) {
+    const now = new Date();
+    const dateDir = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const timestamp = now.toISOString().replace(/[:.]/g, '-');
+    const normalized = `${app}-${win.title}-${timestamp}`
+        .toLowerCase()
+        .replace(/[/\\:*?"<>|]/g, '_')  // strip filesystem-unsafe chars
+        .replace(/\s+/g, '-')           // spaces → hyphens
+        .replace(/-{2,}/g, '-')         // collapse multiple hyphens
+        .replace(/^-|-$/g, '');         // trim leading/trailing hyphens
+    const skillDir = path.resolve(__dirname, '..', 'skills', 'neal-cli');
+    const cacheDir = path.join(skillDir, '.cache', dateDir);
+    fs.mkdirSync(cacheDir, { recursive: true });
+    return path.join(cacheDir, `${normalized}.png`);
+}
+
+function fullScreenOutputPath() {
+    const now = new Date();
+    const dateDir = now.toISOString().slice(0, 10);
+    const timestamp = now.toISOString().replace(/[:.]/g, '-');
+    const normalized = `fullscreen-${timestamp}`;
+    const skillDir = path.resolve(__dirname, '..', 'skills', 'neal-cli');
+    const cacheDir = path.join(skillDir, '.cache', dateDir);
+    fs.mkdirSync(cacheDir, { recursive: true });
+    return path.join(cacheDir, `${normalized}.png`);
+}
+
+async function captureFullScreen(outputPath) {
+    const dest = outputPath || fullScreenOutputPath();
+
+    try {
+        await execFileAsync('screencapture', ['-x', '-o', dest]);
+    } catch (err) {
+        throw new Error(`screencapture failed: ${err.stderr || err.message}`);
+    }
+
+    try {
+        const stat = fs.statSync(dest);
+        if (stat.size === 0) throw new Error('empty');
+    } catch {
+        console.error(
+            'Screenshot file is missing or empty. Screen Recording permission is likely denied.\n' +
+            'Grant permission to your terminal in:\n' +
+            '  System Settings → Privacy & Security → Screen Recording\n' +
+            'Then restart the terminal.'
+        );
+        process.exit(1);
+    }
+
+    console.log(`Saved: ${dest}  (full screen)`);
+}
+
 async function captureWindow(app, win, outputPath) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const dest = outputPath || path.resolve(`./${app}-${win.title.replace(/[/\\:*?"<>|]/g, '_')}-${timestamp}.png`);
+    const dest = outputPath || defaultOutputPath(app, win);
 
     try {
         await execFileAsync('screencapture', [`-l${win.id}`, '-x', '-o', dest]);
@@ -128,7 +179,13 @@ async function screenshot(app, options) {
     if (!app) {
         if (interactive) {
             const apps = await getRunningApps();
-            app = await promptChoice('Running applications', apps, (name) => name);
+            const choices = ['⌕ Full Screen', ...apps];
+            const chosen = await promptChoice('Screenshot target', choices, (name) => name);
+            if (chosen === '⌕ Full Screen') {
+                await captureFullScreen(options.output);
+                return;
+            }
+            app = chosen;
         } else {
             console.error('Missing required argument: <app>. Use --apps to list available application names.');
             process.exit(1);
